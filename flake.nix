@@ -7,7 +7,7 @@
     pkgs-by-name-for-flake-parts.url = "github:drupol/pkgs-by-name-for-flake-parts";
   };
 
-  outputs = inputs @ {flake-parts, ...}:
+  outputs = inputs @ {self, flake-parts, ...}:
     flake-parts.lib.mkFlake {inherit inputs;} {
       imports = [inputs.pkgs-by-name-for-flake-parts.flakeModule];
 
@@ -43,7 +43,7 @@
         imports = [./modules/sliver];
         services.sliver.package =
           lib.mkDefault
-          self.packages.${pkgs.stdenv.hostPlatform.system}.sliver;
+          self.packages.${pkgs.stdenv.hostPlatform.system}.sliver-server;
       };
     };
 }
