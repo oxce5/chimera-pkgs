@@ -22,7 +22,7 @@ buildGoModule rec {
     "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryPublicKey=RWSBpxpRWDrD7Fe+VvRE3c2VEDC2NK80rlNCj+BX0gz44Xw07r6KQD9L"
     "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryRepoURL=https://api.github.com/repos/sliverarmory/armory/releases"
     "-X github.com/bishopfox/sliver/client/version.Version=${version}"
-    "-X github.com/bishopfox/sliver/client/version.CompiledAt=$SOURCE_DATE_EPOCH"
+    "-X github.com/bishopfox/sliver/client/version.CompiledAt=$(date +%s) "
   ];
 
   buildPhase = ''
