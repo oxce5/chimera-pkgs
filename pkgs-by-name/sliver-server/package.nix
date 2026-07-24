@@ -59,6 +59,7 @@ buildGoModule rec {
   checkPhase = "";
 
   meta = with lib; {
+    mainProgram = "sliver-server";
     description = "Sliver server - Command & Control server";
     homepage = "https://github.com/BishopFox/sliver";
     changelog = "https://github.com/BishopFox/sliver/releases/tag/v${version}";

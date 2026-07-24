@@ -40,6 +40,7 @@ buildGoModule rec {
   checkPhase = "";
 
   meta = with lib; {
+    mainProgram = "sliver-client";
     description = "Sliver client - Operator CLI for Sliver C2";
     homepage = "https://github.com/BishopFox/sliver";
     changelog = "https://github.com/BishopFox/sliver/releases/tag/v${version}";
