@@ -19,7 +19,7 @@ in {
     dataDir = lib.mkOption {
       type = lib.types.str;
       default = "/var/lib/sliver";
-      description = "Root data directory. SLIVER_ROOT_DIR is set to this path.";
+      description = "Root data directory. Used as the sliver user's home, so sliver defaults to ~/.sliver inside it.";
     };
 
     user = lib.mkOption {
