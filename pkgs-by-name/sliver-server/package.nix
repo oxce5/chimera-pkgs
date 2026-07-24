@@ -17,14 +17,6 @@ buildGoModule rec {
 
   vendorHash = null;
 
-  ldflags = [
-    "-s"
-    "-w"
-    "-X github.com/bishopfox/sliver/client/command/update.SliverPublicKey=RWTZPg959v3b7tLG7VzKHRB1/QT+d3c71Uzetfa44qAoX5rH7mGoQTTR"
-    "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryPublicKey=RWSBpxpRWDrD7Fe+VvRE3c2VEDC2NK80rlNCj+BX0gz44Xw07r6KQD9L"
-    "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryRepoURL=https://api.github.com/repos/sliverarmory/armory/releases"
-  ];
-
   preBuild = let
     os =
       if stdenv.hostPlatform.isLinux
@@ -43,11 +35,20 @@ buildGoModule rec {
     touch server/assets/fs/${os}/${arch}/PLACEHOLDER
   '';
 
+  ldflags = [
+    "-s -w"
+    "-X github.com/bishopfox/sliver/client/command/update.SliverPublicKey=RWTZPg959v3b7tLG7VzKHRB1/QT+d3c71Uzetfa44qAoX5rH7mGoQTTR"
+    "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryPublicKey=RWSBpxpRWDrD7Fe+VvRE3c2VEDC2NK80rlNCj+BX0gz44Xw07r6KQD9L"
+    "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryRepoURL=https://api.github.com/repos/sliverarmory/armory/releases"
+    "-X github.com/bishopfox/sliver/server/version.Version=${version}"
+    "-X github.com/bishopfox/sliver/server/version.CompiledAt=$SOURCE_DATE_EPOCH"
+  ];
+
   buildPhase = ''
     runHook preBuild
     CGO_ENABLED=0 go build -mod=vendor -trimpath \
       -tags "go_sqlite,server" \
-      -ldflags '${lib.strings.concatStringsSep " " ldflags} -X github.com/bishopfox/sliver/server/version.Version=${version} -X github.com/bishopfox/sliver/server/version.CompiledAt='$SOURCE_DATE_EPOCH'' \
+      -ldflags "${lib.strings.concatStringsSep " " ldflags}" \
       -o sliver-server ./server
     runHook postBuild
   '';
