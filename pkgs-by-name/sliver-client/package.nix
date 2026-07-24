@@ -1,5 +1,8 @@
-{ lib, buildGoModule, fetchFromGitHub }:
-
+{
+  lib,
+  buildGoModule,
+  fetchFromGitHub,
+}:
 buildGoModule rec {
   pname = "sliver-client";
   version = "1.7.3";
@@ -14,7 +17,8 @@ buildGoModule rec {
   vendorHash = null;
 
   ldflags = [
-    "-s" "-w"
+    "-s"
+    "-w"
     "-X github.com/bishopfox/sliver/client/command/update.SliverPublicKey=RWTZPg959v3b7tLG7VzKHRB1/QT+d3c71Uzetfa44qAoX5rH7mGoQTTR"
     "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryPublicKey=RWSBpxpRWDrD7Fe+VvRE3c2VEDC2NK80rlNCj+BX0gz44Xw07r6KQD9L"
     "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryRepoURL=https://api.github.com/repos/sliverarmory/armory/releases"

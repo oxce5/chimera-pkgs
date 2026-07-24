@@ -1,5 +1,9 @@
-{ lib, stdenv, buildGoModule, fetchFromGitHub }:
-
+{
+  lib,
+  stdenv,
+  buildGoModule,
+  fetchFromGitHub,
+}:
 buildGoModule rec {
   pname = "sliver-server";
   version = "1.7.3";
@@ -14,17 +18,24 @@ buildGoModule rec {
   vendorHash = null;
 
   ldflags = [
-    "-s" "-w"
+    "-s"
+    "-w"
     "-X github.com/bishopfox/sliver/client/command/update.SliverPublicKey=RWTZPg959v3b7tLG7VzKHRB1/QT+d3c71Uzetfa44qAoX5rH7mGoQTTR"
     "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryPublicKey=RWSBpxpRWDrD7Fe+VvRE3c2VEDC2NK80rlNCj+BX0gz44Xw07r6KQD9L"
     "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryRepoURL=https://api.github.com/repos/sliverarmory/armory/releases"
   ];
 
   preBuild = let
-    os = if stdenv.hostPlatform.isLinux then "linux"
-      else if stdenv.hostPlatform.isDarwin then "darwin"
+    os =
+      if stdenv.hostPlatform.isLinux
+      then "linux"
+      else if stdenv.hostPlatform.isDarwin
+      then "darwin"
       else "windows";
-    arch = if stdenv.hostPlatform.isAarch64 then "arm64" else "amd64";
+    arch =
+      if stdenv.hostPlatform.isAarch64
+      then "arm64"
+      else "amd64";
   in ''
     mkdir -p server/assets/fs/${os}/${arch}
     printf '\x50\x4b\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \

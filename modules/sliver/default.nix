@@ -1,5 +1,10 @@
-{ config, lib, pkgs, ... }:
-
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+# TODO: Figure out how to add operators declaratively
 let
   cfg = config.services.sliver;
 in {
@@ -40,12 +45,12 @@ in {
       createHome = true;
     };
 
-    users.groups.${cfg.group} = { };
+    users.groups.${cfg.group} = {};
 
     systemd.services.sliver = {
       description = "Sliver";
-      after = [ "network.target" ];
-      wantedBy = [ "multi-user.target" ];
+      after = ["network.target"];
+      wantedBy = ["multi-user.target"];
 
       serviceConfig = {
         Type = "simple";

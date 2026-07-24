@@ -7,7 +7,11 @@
     pkgs-by-name-for-flake-parts.url = "github:drupol/pkgs-by-name-for-flake-parts";
   };
 
-  outputs = inputs @ {self, flake-parts, ...}:
+  outputs = inputs @ {
+    self,
+    flake-parts,
+    ...
+  }:
     flake-parts.lib.mkFlake {inherit inputs;} {
       imports = [inputs.pkgs-by-name-for-flake-parts.flakeModule];
 
