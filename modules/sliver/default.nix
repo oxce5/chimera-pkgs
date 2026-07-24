@@ -3,9 +3,7 @@
   lib,
   pkgs,
   ...
-}:
-# TODO: Figure out how to add operators declaratively
-let
+}: let
   cfg = config.services.sliver;
 in {
   options.services.sliver = {
@@ -42,7 +40,6 @@ in {
       isSystemUser = true;
       group = cfg.group;
       home = cfg.dataDir;
-      createHome = true;
     };
 
     users.groups.${cfg.group} = {};
@@ -63,10 +60,6 @@ in {
         StateDirectory = lib.strings.removePrefix "/var/lib/" cfg.dataDir;
         StateDirectoryMode = "0700";
         UMask = "0077";
-      };
-
-      environment = {
-        SLIVER_ROOT_DIR = cfg.dataDir;
       };
     };
   };
