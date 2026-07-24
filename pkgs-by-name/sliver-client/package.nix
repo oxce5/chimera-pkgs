@@ -28,7 +28,7 @@ buildGoModule rec {
     runHook preBuild
     CGO_ENABLED=0 go build -mod=vendor -trimpath \
       -tags "go_sqlite,client" \
-      -ldflags '${lib.strings.concatStringsSep " " ldflags}' \
+      -ldflags '${lib.strings.concatStringsSep " " ldflags} -X github.com/bishopfox/sliver/client/version.Version=${version} -X github.com/bishopfox/sliver/client/version.CompiledAt='$SOURCE_DATE_EPOCH'' \
       -o sliver-client ./client
     runHook postBuild
   '';
