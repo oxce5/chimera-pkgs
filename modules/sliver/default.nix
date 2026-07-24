@@ -49,6 +49,8 @@ in {
       after = ["network.target"];
       wantedBy = ["multi-user.target"];
 
+      path = [ pkgs.git ];
+
       serviceConfig = {
         Type = "simple";
         Restart = "on-failure";
