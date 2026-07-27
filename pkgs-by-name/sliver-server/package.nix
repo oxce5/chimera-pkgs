@@ -9,13 +9,13 @@
 }:
 buildGoModule rec {
   pname = "sliver-server";
-  version = "1.7.3";
+  version = "1.7.4";
 
   src = fetchFromGitHub {
     owner = "BishopFox";
     repo = "sliver";
-    rev = "v${version}";
-    hash = "sha256-3FYiDQiirc/VE9HEDny7/7x69XHQbylXPuKpcNJgLHw=";
+    rev = "2659d848d70a7127ad055205664eef1babceca69";
+    hash = "sha256-12q7N3n9hWpmUHrbnavHqWdus1dp3hxt7C8qGKMe858="; # FIXME
   };
 
   vendorHash = null;
@@ -30,7 +30,7 @@ buildGoModule rec {
       hash = "sha256-AZGGHUvR0eUkdMSgYIco2IhVBvMbzLosek4rcrXmydM=";
     };
     vendorHash = "sha256-B8M0SuxiNhq8SEwQGt5qquoYDYyVcr5Mj68vuSPwpcs=";
-    ldflags = [ "-s -w" ];
+    ldflags = ["-s -w"];
     buildPhase = ''
       runHook preBuild
       go build -trimpath -ldflags "-s -w" -o garble .
@@ -87,6 +87,7 @@ buildGoModule rec {
     "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryRepoURL=https://api.github.com/repos/sliverarmory/armory/releases"
     "-X github.com/bishopfox/sliver/client/version.Version=${version}"
     "-X github.com/bishopfox/sliver/client/version.GitCommit=${src.rev}"
+    "-X github.com/bishopfox/sliver/client/version.CompiledAt=$(date +%s)"
     "-X github.com/bishopfox/sliver/server/version.Version=${version}"
     "-X github.com/bishopfox/sliver/server/version.GitCommit=${src.rev}"
     "-X github.com/bishopfox/sliver/server/version.CompiledAt=$(date +%s)"
