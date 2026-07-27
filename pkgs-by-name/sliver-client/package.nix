@@ -5,13 +5,13 @@
 }:
 buildGoModule rec {
   pname = "sliver-client";
-  version = "1.7.3";
+  version = "1.7.4";
 
   src = fetchFromGitHub {
     owner = "BishopFox";
     repo = "sliver";
-    rev = "v${version}";
-    hash = "sha256-3FYiDQiirc/VE9HEDny7/7x69XHQbylXPuKpcNJgLHw=";
+    rev = "84afb2be181a3e0e015a5fe06805b5c5a7ad8e0c";
+    hash = "sha256-12q7N3n9hWpmUHrbnavHqWdus1dp3hxt7C8qGKMe858=";
   };
 
   vendorHash = null;
