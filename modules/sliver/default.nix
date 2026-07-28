@@ -43,6 +43,7 @@ in {
     };
 
     users.groups.${cfg.group} = {};
+    environment.systemPackages = with pkgs; [ sliver-client ];
 
     systemd.services.sliver = {
       description = "Sliver";
