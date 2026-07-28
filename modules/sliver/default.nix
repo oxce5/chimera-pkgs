@@ -43,14 +43,13 @@ in {
     };
 
     users.groups.${cfg.group} = {};
-    environment.systemPackages = with pkgs; [ sliver-client ];
 
     systemd.services.sliver = {
       description = "Sliver";
       after = ["network.target"];
       wantedBy = ["multi-user.target"];
 
-      path = [ pkgs.git ];
+      path = [pkgs.git];
 
       serviceConfig = {
         Type = "simple";
