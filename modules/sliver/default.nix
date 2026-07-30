@@ -49,7 +49,10 @@ in {
       after = ["network.target"];
       wantedBy = ["multi-user.target"];
 
-      path = [pkgs.git];
+      path = with pkgs; [
+        git
+        gcc
+      ];
 
       serviceConfig = {
         Type = "simple";
