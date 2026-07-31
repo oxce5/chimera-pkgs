@@ -49,9 +49,15 @@ in {
       after = ["network.target"];
       wantedBy = ["multi-user.target"];
 
+      # cgo falls back to `gcc` for native builds. Garble passes `-buildid=` to the
+      # Go linker, which suppresses the `--build-id` note; with Nix's binutils the
+      # resulting c-shared .so then has no PT_NOTE/PT_PHDR and malasada cannot
+      # convert it to shellcode. Prepending -Wl,--build-id restores a PT_NOTE.
       path = with pkgs; [
         git
-        gcc
+        (writeShellScriptBin "gcc" ''
+          exec "${gcc}/bin/gcc" -Wl,--build-id "$@"
+        '')
       ];
 
       serviceConfig = {
