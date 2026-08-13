@@ -33,7 +33,9 @@ buildGoModule rec {
     ldflags = ["-s -w"];
     buildPhase = ''
       runHook preBuild
-      go build -trimpath -ldflags "-s -w" -o garble .
+      # CGO_ENABLED=0 so garble is statically linked (no Nix glibc loader
+      # dependency at runtime on the target machine).
+      CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o garble .
       runHook postBuild
     '';
     installPhase = ''
