@@ -14,8 +14,8 @@ buildGoModule rec {
   src = fetchFromGitHub {
     owner = "BishopFox";
     repo = "sliver";
-    rev = "2659d848d70a7127ad055205664eef1babceca69";
-    hash = "sha256-12q7N3n9hWpmUHrbnavHqWdus1dp3hxt7C8qGKMe858="; # FIXME
+    rev = "09b0540e75a1d4a38460092b3e52d6e6c4d3bfed";
+    hash = "sha256-f0jl+hV4j534bwUprQPFu4wbaoSWS3cEe2sU/KTEB5s=";
   };
 
   vendorHash = null;
