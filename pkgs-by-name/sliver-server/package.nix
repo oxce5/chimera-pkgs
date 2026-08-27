@@ -22,14 +22,14 @@ buildGoModule rec {
 
   garble = buildGoModule {
     pname = "garble";
-    version = "1.26.2";
+    version = "1.26.6";
     src = fetchFromGitHub {
       owner = "moloch--";
       repo = "garble";
-      rev = "v1.26.2";
-      hash = "sha256-AZGGHUvR0eUkdMSgYIco2IhVBvMbzLosek4rcrXmydM=";
+      rev = "542a43149f26e75e6a0c7327a68aab63a9c60ed7";
+      hash = "sha256-ndkWliDzJLZFyhEikzu8UHkLyiJylHzmjd16WIakvak=";
     };
-    vendorHash = "sha256-B8M0SuxiNhq8SEwQGt5qquoYDYyVcr5Mj68vuSPwpcs=";
+    vendorHash = "sha256-F0Jc15ulA+qRDZu5W3FU9dZ+oXq8lGXP4dQeWnZwYbk=";
     ldflags = ["-s -w"];
     buildPhase = ''
       runHook preBuild
