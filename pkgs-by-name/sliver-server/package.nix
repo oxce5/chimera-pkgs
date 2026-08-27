@@ -6,8 +6,18 @@
   fetchurl,
   go,
   zip,
+  pkgs,
 }:
-buildGoModule rec {
+let
+  go_1_26_6 = pkgs.go_1_26.overrideAttrs (old: rec {
+    version = "1.26.6";
+    src = pkgs.fetchurl {
+      url = "https://go.dev/dl/go${version}.src.tar.gz";
+      hash = "sha256-oHIcVMaIkBRI13rZs+x+p8R0cwdV/4kTgukuy5P/LLE=";
+    };
+  });
+in
+buildGoModule.override { go = go_1_26_6; } rec {
   pname = "sliver-server";
   version = "1.7.4";
 
