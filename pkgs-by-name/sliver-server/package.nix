@@ -4,7 +4,6 @@
   buildGoModule,
   fetchFromGitHub,
   fetchurl,
-  go,
   zip,
   pkgs,
 }:
@@ -74,7 +73,7 @@ buildGoModule.override { go = go_1_26_6; } rec {
   in ''
     mkdir -p server/assets/fs/${os}/${arch}
 
-    cp -r ${go}/share/go $TMPDIR/go
+    cp -r ${go_1_26_6}/share/go $TMPDIR/go
     chmod -R +w $TMPDIR/go
 
     rm -rf $TMPDIR/go/api $TMPDIR/go/doc $TMPDIR/go/misc $TMPDIR/go/test
