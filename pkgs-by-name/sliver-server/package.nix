@@ -29,7 +29,7 @@ buildGoModule.override { go = go_1_26_6; } rec {
 
   vendorHash = null;
 
-  garble = buildGoModule {
+  garble = buildGoModule.override { go = go_1_26_6; } {
     pname = "garble";
     version = "1.26.6";
     src = fetchFromGitHub {
