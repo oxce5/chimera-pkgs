@@ -15,7 +15,11 @@ let
           owner = "fortra";
           repo = "impacket";
           rev = "caba5facdd3a01b5d0decc6daf5871839f22f792";
-          hash = "sha256-jyn5qSSAipGYhHm2EROwDHa227mnmW+d+0H0/++i1OY=";
+          # NOTE: fixed-output store paths do not encode the rev, so a wrong
+          # hash here silently substitutes an unrelated cached tree (we once
+          # ended up with 0.13.0-dev without LDAP signing support). Always
+          # re-verify with nix-prefetch-github when bumping rev.
+          hash = "sha256-W7wXgUq34xzqbi/vEyUoKguaBmKeKGd6u3Oce39JHFc=";
         };
         postPatch = ''
           substituteInPlace setup.py \
@@ -24,6 +28,11 @@ let
       };
       bloodhound-py = super.bloodhound-py.overridePythonAttrs (old: {
         dontCheckPythonMetadata = true;
+      });
+      # Our impacket is a newer-than-release git snapshot (see above), so
+      # relax upper bounds pins like impacket~=0.13.0 in dependants.
+      certipy-ad = super.certipy-ad.overridePythonAttrs (old: {
+        pythonRelaxDeps = (old.pythonRelaxDeps or []) ++ [ "impacket" ];
       });
       pynfsclient = super.pynfsclient.overridePythonAttrs (old: {
         dontCheckPythonMetadata = true;
