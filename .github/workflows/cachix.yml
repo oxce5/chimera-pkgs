@@ -19,6 +19,17 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
+      - name: Check Cachix token
+        # Fail loudly on push (instead of silently skipping the push)
+        # when the CACHIX_AUTH_TOKEN secret is missing. PRs from forks
+        # have no access to secrets and stay pull-only.
+        if: github.event_name == 'push'
+        run: |
+          if [ -z "${{ secrets.CACHIX_AUTH_TOKEN }}" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN secret is not set - Cachix push will be skipped."
+            exit 1
+          fi
+
       - name: Setup Cachix
         uses: cachix/cachix-action@v15
         with:

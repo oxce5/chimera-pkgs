@@ -5,31 +5,22 @@
   fetchFromGitHub,
   fetchurl,
   zip,
-  pkgs,
+  go_1_26,
 }:
-let
-  go_1_26_6 = pkgs.go_1_26.overrideAttrs (old: rec {
-    version = "1.26.6";
-    src = pkgs.fetchurl {
-      url = "https://go.dev/dl/go${version}.src.tar.gz";
-      hash = "sha256-oHIcVMaIkBRI13rZs+x+p8R0cwdV/4kTgukuy5P/LLE=";
-    };
-  });
-in
-buildGoModule.override { go = go_1_26_6; } rec {
+buildGoModule rec {
   pname = "sliver-server";
-  version = "1.7.4";
+  version = "1.7.7";
 
   src = fetchFromGitHub {
     owner = "BishopFox";
     repo = "sliver";
-    rev = "09b0540e75a1d4a38460092b3e52d6e6c4d3bfed";
-    hash = "sha256-f0jl+hV4j534bwUprQPFu4wbaoSWS3cEe2sU/KTEB5s=";
+    rev = "0aa7e5bf962414823f12c3a8ea1f667f61b19ce2";
+    hash = "sha256-yIpdbHVT+yiQrncoulW75+431T7z6akvnFhbSRglpDk=";
   };
 
   vendorHash = null;
 
-  garble = buildGoModule.override { go = go_1_26_6; } {
+  garble = buildGoModule {
     pname = "garble";
     version = "1.26.6";
     src = fetchFromGitHub {
@@ -73,7 +64,7 @@ buildGoModule.override { go = go_1_26_6; } rec {
   in ''
     mkdir -p server/assets/fs/${os}/${arch}
 
-    cp -r ${go_1_26_6}/share/go $TMPDIR/go
+    cp -r ${go_1_26}/share/go $TMPDIR/go
     chmod -R +w $TMPDIR/go
 
     rm -rf $TMPDIR/go/api $TMPDIR/go/doc $TMPDIR/go/misc $TMPDIR/go/test
