@@ -82,6 +82,18 @@ jobs:
           name: chimera-pkgs
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+      - name: Refuse local nodejs build
+        # iosevka needs nodejs at build time; a fresh nixpkgs can ship one
+        # too new for Hydra to have cached. Fail fast instead of compiling
+        # V8 from source for hours - re-run once the binary cache has it.
+        run: |
+          if nix build .#iosevka-chimera --dry-run 2>&1 \
+            | awk '/will be built:/{f=1;next} /will be fetched/{f=0} f' \
+            | grep -qi "nodejs"; then
+            echo "::error::iosevka-chimera would build nodejs from source (missing from binary caches). Aborting to avoid a multi-hour V8 compile - re-run once Hydra has cached it."
+            exit 1
+          fi
+
       - name: Build font
         run: |
           nix build .#iosevka-chimera --print-build-logs
