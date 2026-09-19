@@ -53,21 +53,12 @@ in {
       # Go linker, which suppresses the `--build-id` note; with Nix's binutils the
       # resulting c-shared .so then has no PT_NOTE/PT_PHDR and malasada cannot
       # convert it to shellcode. Prepending -Wl,--build-id restores a PT_NOTE.
-      path = let
-        go_1_26_6 = pkgs.go_1_26.overrideAttrs (old: rec {
-          version = "1.26.6";
-          src = pkgs.fetchurl {
-            url = "https://go.dev/dl/go${version}.src.tar.gz";
-            hash = "sha256-oHIcVMaIkBRI13rZs+x+p8R0cwdV/4kTgukuy5P/LLE=";
-          };
-        });
-      in
-      with pkgs; [
+      path = with pkgs; [
         git
         (writeShellScriptBin "gcc" ''
           exec "${gcc}/bin/gcc" -Wl,--build-id "$@"
         '')
-        go_1_26_6
+        go_1_26
       ];
 
       serviceConfig = {
