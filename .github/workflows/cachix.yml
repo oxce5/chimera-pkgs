@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  packages:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -18,6 +18,8 @@ jobs:
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
+            extra-substituters = https://nix-community.cachix.org
+            extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSU6h44bbx96VOlDHoayWR3I/7mD/
 
       - name: Check Cachix token
         # Fail loudly on push (instead of silently skipping the push)
@@ -42,8 +44,44 @@ jobs:
         # cachix-action watches the store and pushes everything built here.
         run: |
           nix build \
-            .#iosevka-chimera \
             .#netexec \
             .#sliver-client \
             .#sliver-server \
             --print-build-logs
+
+  font:
+    # Separate job: iosevka-chimera needs nodejs at build time, and a fresh
+    # nixpkgs can ship a nodejs too new for Hydra to have cached yet - then
+    # the runner compiles V8 from source (~1900 objects, 1-2h). Isolated here
+    # so a slow/failed font build never blocks the fast packages above.
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-substituters = https://nix-community.cachix.org
+            extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSU6h44bbx96VOlDHoayWR3I/7mD/
+
+      - name: Check Cachix token
+        if: github.event_name == 'push'
+        run: |
+          if [ -z "${{ secrets.CACHIX_AUTH_TOKEN }}" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN secret is not set - Cachix push will be skipped."
+            exit 1
+          fi
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: chimera-pkgs
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Build font
+        run: |
+          nix build .#iosevka-chimera --print-build-logs
