@@ -39,6 +39,34 @@ let
       });
     };
   };
+  # BloodHound CE ingestor (PyPI). Not in nixpkgs; nxc requires the
+  # bloodhound-ce distribution (classic `bloodhound` fails nxc's
+  # BloodHound-CE config check) and both provide the top-level
+  # `bloodhound` module, so they are mutually exclusive.
+  bloodhound-ce = python.pkgs.buildPythonPackage rec {
+    # Underscore: PyPI hosts the sdist as bloodhound_ce-1.9.1.tar.gz.
+    # The built distribution is still named bloodhound-ce (normalized).
+    pname = "bloodhound_ce";
+    version = "1.9.1";
+    pyproject = true;
+
+    src = python.pkgs.fetchPypi {
+      inherit pname version;
+      hash = "sha256-CD3z3DrZmO3P+Ptj/dj1tGSqtf2sjgXMmztlICEPeas=";
+    };
+
+    build-system = with python.pkgs; [ setuptools ];
+
+    dependencies = with python.pkgs; [
+      dnspython
+      impacket
+      ldap3
+      pyasn1
+      pycryptodome
+    ];
+
+    pythonImportsCheck = [ "bloodhound" ];
+  };
 in
 python.pkgs.buildPythonApplication (finalAttrs: {
   pname = "netexec";
@@ -53,11 +81,6 @@ python.pkgs.buildPythonApplication (finalAttrs: {
   };
 
   pythonRelaxDeps = true;
-
-  pythonRemoveDeps = [
-    "neo4j"
-    "bloodhound-ce"
-  ];
 
   postPatch = ''
     substituteInPlace nxc/first_run.py \
@@ -84,7 +107,7 @@ python.pkgs.buildPythonApplication (finalAttrs: {
     argcomplete
     asyauth
     beautifulsoup4
-    bloodhound-py
+    bloodhound-ce
     certipy-ad
     dploot
     dsinternals
