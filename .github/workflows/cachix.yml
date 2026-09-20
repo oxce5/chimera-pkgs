@@ -44,6 +44,7 @@ jobs:
         # cachix-action watches the store and pushes everything built here.
         run: |
           nix build \
+            .#evil-winrm \
             .#netexec \
             .#sliver-client \
             .#sliver-server \
