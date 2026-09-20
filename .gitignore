@@ -1,0 +1,3 @@
+# Nix build output symlinks (nix build .#foo [-o result])
+/result
+/result-*
