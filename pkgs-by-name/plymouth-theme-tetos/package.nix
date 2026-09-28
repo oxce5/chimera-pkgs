@@ -15,13 +15,18 @@ stdenv.mkDerivation (finalAttrs: {
     hash = "sha256-Z4crWszInL+V1mHludmQ6ZK7vIfSpzFVgMXSRLCL38I=";
   };
 
+  # plymouth requires the theme directory to be named after the .plymouth
+  # file it contains, and the initrd builder (nixos plymouth module) resolves
+  # the theme as <themes>/<theme>/<theme>.plymouth.
+  themeName = "tetos";
+
   # preview.gif is a few MB of demo footage, not part of the theme.
   installPhase = ''
     runHook preInstall
 
-    mkdir -p $out/share/plymouth/themes/${finalAttrs.pname}
-    cp tetos.plymouth tetos.script $out/share/plymouth/themes/${finalAttrs.pname}/
-    cp -r images $out/share/plymouth/themes/${finalAttrs.pname}/
+    mkdir -p $out/share/plymouth/themes/${finalAttrs.themeName}
+    cp tetos.plymouth tetos.script $out/share/plymouth/themes/${finalAttrs.themeName}/
+    cp -r images $out/share/plymouth/themes/${finalAttrs.themeName}/
 
     runHook postInstall
   '';
@@ -29,7 +34,8 @@ stdenv.mkDerivation (finalAttrs: {
   # Preview with:
   #   plymouth --show-splash --tty=1 --debug
   passthru = {
-    themeDir = "${placeholder "out"}/share/plymouth/themes/${finalAttrs.pname}";
+    inherit (finalAttrs) themeName;
+    themeDir = "${placeholder "out"}/share/plymouth/themes/${finalAttrs.themeName}";
   };
 
   meta = {
