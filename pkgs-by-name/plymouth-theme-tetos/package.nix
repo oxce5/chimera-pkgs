@@ -28,6 +28,15 @@ stdenv.mkDerivation (finalAttrs: {
     cp tetos.plymouth tetos.script $out/share/plymouth/themes/${finalAttrs.themeName}/
     cp -r images $out/share/plymouth/themes/${finalAttrs.themeName}/
 
+    # The theme hardcodes /usr/share/plymouth/themes. Point it at the store
+    # instead, so the NixOS plymouth module's initrd fixup (which rewrites
+    # $storeDir/.../share/plymouth/themes to the initrd theme dir) can find it.
+    for f in $out/share/plymouth/themes/${finalAttrs.themeName}/*.plymouth \
+             $out/share/plymouth/themes/${finalAttrs.themeName}/*.script; do
+      substituteInPlace "$f" \
+        --replace /usr/share/plymouth/themes "$out/share/plymouth/themes"
+    done
+
     runHook postInstall
   '';
 
