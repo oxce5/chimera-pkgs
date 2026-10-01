@@ -5,6 +5,14 @@
   ...
 }: let
   cfg = config.services.sliver;
+
+  # zig target triple matching the server's own platform, used for native
+  # (same-arch) implant builds where sliver defers to `gcc` from PATH.
+  nativeTarget =
+    if pkgs.stdenv.hostPlatform.isAarch64 then
+      "aarch64-linux-gnu"
+    else
+      "x86_64-linux-gnu";
 in {
   options.services.sliver = {
     enable = lib.mkEnableOption "Sliver C2 server";
@@ -49,16 +57,35 @@ in {
       after = ["network.target"];
       wantedBy = ["multi-user.target"];
 
-      # cgo falls back to `gcc` for native builds. Garble passes `-buildid=` to the
-      # Go linker, which suppresses the `--build-id` note; with Nix's binutils the
-      # resulting c-shared .so then has no PT_NOTE/PT_PHDR and malasada cannot
-      # convert it to shellcode. Prepending -Wl,--build-id restores a PT_NOTE.
-      path = with pkgs; [
-        git
-        (writeShellScriptBin "gcc" ''
-          exec "${gcc}/bin/gcc" -Wl,--build-id "$@"
+      # When an implant's GOOS/GOARCH matches the server's, sliver never calls
+      # findCrossCompilers() (see server/generate/binaries.go) and so leaves CC
+      # empty, letting cgo fall back to `gcc` from PATH. That would pick up Nix's
+      # gcc wrapper, which stamps the Nix store's glibc into PT_INTERP and makes
+      # the implant refuse to start on any host without that store path.
+      #
+      # Shim `gcc` to the zig that sliver unpacks from its own assets into
+      # $SLIVER_ROOT_DIR/zig (server/assets: GetZigDir, untarSkipTopLevel drops
+      # the archive's top-level dir, so the binary sits directly in `zig/`).
+      # Targeting the *gnu* flavour keeps today's dynamically linked,
+      # glibc-dependent implants, but with the FHS-compliant
+      # /lib64/ld-linux-x86-64.so.2 interpreter. Note this is the only place the
+      # compiler is chosen for native builds; cross-arch builds already get zig
+      # (musl) from sliver itself.
+      #
+      # -Wl,--build-id is kept for the c-shared -> shellcode path: garble passes
+      # `-buildid=` to the Go linker, suppressing the note, and without a PT_NOTE
+      # malasada cannot convert the .so to shellcode.
+      path = [
+        pkgs.git
+        (pkgs.writeShellScriptBin "gcc" ''
+          # Mirrors server/assets.GetRootAppDir() + GetZigDir().
+          zig="''${SLIVER_ROOT_DIR:-$HOME/.sliver}/zig/zig"
+          if [ ! -x "$zig" ]; then
+            echo "sliver: zig not found at $zig - has the server unpacked its assets yet?" >&2
+            exit 127
+          fi
+          exec "$zig" cc -target ${nativeTarget} -Wl,--build-id "$@"
         '')
-        go_1_26
       ];
 
       serviceConfig = {

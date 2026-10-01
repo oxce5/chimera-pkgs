@@ -50,6 +50,38 @@ buildGoModule rec {
     hash = "sha256-AqonDxg9onbltZILHaxEpj8aSeVQUOveOuzJ64L5Mjk=";
   };
 
+  # Version of the Go toolchain Sliver ships as a build asset. Keep in sync
+  # with util/assets/constants.go (goVersion) upstream.
+  goAssetsVersion = "1.26.6";
+
+  # Upstream Sliver downloads a *pristine* Go toolchain from dl.google.com for
+  # the server to build implants with (see util/assets/go.go). We have to do the
+  # same on Linux: nixpkgs patches Go's bootstrap so that
+  # src/internal/buildcfg/zbootstrap.go declares
+  #   DefaultGO_LDSO = /nix/store/...-glibc-*/lib/ld-linux-x86-64.so.2
+  # which cmd/link then uses as PT_INTERP for internally linked cgo binaries
+  # (cmd/link/internal/ld/elf.go). Bundling nixpkgs' Go therefore stamps every
+  # generated implant with a Nix store interpreter, so it only runs on hosts
+  # that happen to have that store path. The official tarball leaves GO_LDSO
+  # empty, so the interpreter is supplied by the bundled zig cc instead - which
+  # gives the FHS-compliant /lib64/ld-linux-x86-64.so.2.
+  #
+  # Darwin is left on nixpkgs' Go: it has no bearing on the implants produced
+  # there, and it avoids pulling in two more ~80MB tarball hashes.
+  goTarGz =
+    if stdenv.hostPlatform.isLinux then
+      fetchurl {
+        url =
+          if stdenv.hostPlatform.isAarch64
+          then "https://dl.google.com/go/go${goAssetsVersion}.linux-arm64.tar.gz"
+          else "https://dl.google.com/go/go${goAssetsVersion}.linux-amd64.tar.gz";
+        hash =
+          if stdenv.hostPlatform.isAarch64
+          then "sha256-0FB+np1/4BKq5XAQjL12wV3oeeFxMKuMuQ1NdEXLHy4="
+          else "sha256-cI7/t3S+gjdXDQrdFjIlq7369PyiiyYR3xZ766T+74k=";
+      }
+    else null;
+
   preBuild = let
     os =
       if stdenv.hostPlatform.isLinux
@@ -64,7 +96,12 @@ buildGoModule rec {
   in ''
     mkdir -p server/assets/fs/${os}/${arch}
 
-    cp -r ${go_1_26}/share/go $TMPDIR/go
+    ${lib.optionalString (goTarGz != null) ''
+      tar -xf ${goTarGz} -C $TMPDIR
+    ''}
+    ${lib.optionalString (goTarGz == null) ''
+      cp -r ${go_1_26}/share/go $TMPDIR/go
+    ''}
     chmod -R +w $TMPDIR/go
 
     rm -rf $TMPDIR/go/api $TMPDIR/go/doc $TMPDIR/go/misc $TMPDIR/go/test
