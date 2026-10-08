@@ -34,6 +34,9 @@ let
       certipy-ad = super.certipy-ad.overridePythonAttrs (old: {
         pythonRelaxDeps = (old.pythonRelaxDeps or []) ++ [ "impacket" ];
       });
+      anyio = super.anyio.overridePythonAttrs (old: {
+        doCheck = false;
+      });
       pynfsclient = super.pynfsclient.overridePythonAttrs (old: {
         dontCheckPythonMetadata = true;
       });
