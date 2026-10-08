@@ -3,8 +3,7 @@
 
   inputs = {
     flake-parts.url = "github:hercules-ci/flake-parts";
-    # pinned due to nodejs slim building
-    nixpkgs.url = "github:NixOS/nixpkgs/c7def046b9a883d46974757852106483d741586f";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     pkgs-by-name-for-flake-parts.url = "github:drupol/pkgs-by-name-for-flake-parts";
   };
 
