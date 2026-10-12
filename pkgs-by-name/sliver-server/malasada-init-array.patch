@@ -1,0 +1,94 @@
+--- a/vendor/github.com/sliverarmory/malasada/malasada.go
++++ b/vendor/github.com/sliverarmory/malasada/malasada.go
+@@ -248,6 +248,13 @@
+ )
+ 
+ const (
++	dtRela   = 7
++	dtRelasz = 8
++
++	rTypeX8664Relative = 8
++)
++
++const (
+ 	df1Pie = 0x08000000
+ )
+ 
+@@ -1099,6 +1106,52 @@
+ 	return 0, fmt.Errorf("%w: vaddr 0x%x not in any PT_LOAD file range", errBadELF, vaddr)
+ }
+ 
++// relativeAddends maps a relocation offset to the addend of the
++// R_X86_64_RELATIVE relocation that covers it.
++//
++// A PIE or shared link does not store an in-image pointer in the slot itself;
++// it leaves the slot zero and hands the link-time address to the dynamic
++// loader as an R_*_RELATIVE addend. So reading .init_array straight out of the
++// file only works for linkers (GNU ld) that choose to write the value inline.
++// lld always emits the relocation, which made every lld-linked Go c-shared
++// library look like it had an empty init array.
++func relativeAddends(so []byte, dynPh elf64Phdr) (map[uint64]uint64, error) {
++	addends := make(map[uint64]uint64)
++	if dynPh.off+dynPh.filesz > uint64(len(so)) {
++		return nil, fmt.Errorf("%w: PT_DYNAMIC outside file", errBadELF)
++	}
++	dyn := so[dynPh.off : dynPh.off+dynPh.filesz]
++
++	var relaOff, relaSz uint64
++	for off := 0; off+16 <= len(dyn); off += 16 {
++		tag := binary.LittleEndian.Uint64(dyn[off : off+8])
++		val := binary.LittleEndian.Uint64(dyn[off+8 : off+16])
++		if tag == dtNull {
++			break
++		}
++		switch uint64(tag) {
++		case dtRela:
++			relaOff = val
++		case dtRelasz:
++			relaSz = val
++		}
++	}
++	if relaSz == 0 {
++		return addends, nil
++	}
++	if relaOff+relaSz > uint64(len(so)) {
++		return nil, fmt.Errorf("%w: .rela.dyn outside file", errBadELF)
++	}
++	for off := relaOff; off+24 <= relaOff+relaSz; off += 24 {
++		rOffset := binary.LittleEndian.Uint64(so[off : off+8])
++		rInfo := binary.LittleEndian.Uint64(so[off+8 : off+16])
++		if uint32(rInfo) == rTypeX8664Relative {
++			addends[rOffset] = binary.LittleEndian.Uint64(so[off+16 : off+24])
++		}
++	}
++	return addends, nil
++}
++
+ func extractInitVaddrs64(so []byte, phdrs []elf64Phdr, dynPh elf64Phdr) ([]uint64, error) {
+ 	// dynPh.off points to the dynamic entries in the file.
+ 	if dynPh.off+dynPh.filesz > uint64(len(so)) {
+@@ -1134,6 +1187,11 @@
+ 		}
+ 	}
+ 
++	relAddends, err := relativeAddends(so, dynPh)
++	if err != nil {
++		return nil, err
++	}
++
+ 	readPtrArray := func(arrayVaddr, arraySz uint64) ([]uint64, error) {
+ 		if arrayVaddr == 0 || arraySz == 0 {
+ 			return nil, nil
+@@ -1152,6 +1210,12 @@
+ 		out := make([]uint64, 0, arraySz/8)
+ 		for i := uint64(0); i < arraySz; i += 8 {
+ 			ptr := binary.LittleEndian.Uint64(b[i : i+8])
++			// The loader adds the load bias to an R_*_RELATIVE addend, and
++			// the entry stub adds the same bias to our vaddrs, so the addend
++			// is already the link-time address we want here.
++			if addend, ok := relAddends[arrayVaddr+i]; ok {
++				ptr = addend
++			}
+ 			if ptr != 0 {
+ 				out = append(out, ptr)
+ 			}
