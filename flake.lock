@@ -20,17 +20,17 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1791366222,
-        "narHash": "sha256-o0N4g6uSOIppU7CGToNvGlMf5vC+B6O6ukFHKY/TKOY=",
+        "lastModified": 1789370336,
+        "narHash": "sha256-6RSEDHIWQtesQKWSu5qRai8L2h4KgCgMEfJHstW99G4=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "39ad350a0602fa0a58a544344e3e9187526ea45c",
+        "rev": "c7def046b9a883d46974757852106483d741586f",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
         "repo": "nixpkgs",
+        "rev": "c7def046b9a883d46974757852106483d741586f",
         "type": "github"
       }
     },
@@ -68,7 +68,24 @@
       "inputs": {
         "flake-parts": "flake-parts",
         "nixpkgs": "nixpkgs",
-        "pkgs-by-name-for-flake-parts": "pkgs-by-name-for-flake-parts"
+        "pkgs-by-name-for-flake-parts": "pkgs-by-name-for-flake-parts",
+        "sliver": "sliver"
+      }
+    },
+    "sliver": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1788451093,
+        "narHash": "sha256-yIpdbHVT+yiQrncoulW75+431T7z6akvnFhbSRglpDk=",
+        "owner": "BishopFox",
+        "repo": "sliver",
+        "rev": "0aa7e5bf962414823f12c3a8ea1f667f61b19ce2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "BishopFox",
+        "repo": "sliver",
+        "type": "github"
       }
     }
   },

@@ -3,8 +3,17 @@
 
   inputs = {
     flake-parts.url = "github:hercules-ci/flake-parts";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    # pinned due to nodejs slim building
+    nixpkgs.url = "github:NixOS/nixpkgs/c7def046b9a883d46974757852106483d741586f";
     pkgs-by-name-for-flake-parts.url = "github:drupol/pkgs-by-name-for-flake-parts";
+    # Sliver source for sliver-client / sliver-server. Bump with
+    # `nix flake update sliver`; rev and narHash live in flake.lock.
+    # Sliver ships no flake.nix, hence flake = false - the input is then a
+    # plain source tree rather than a set of flake outputs.
+    sliver = {
+      url = "github:BishopFox/sliver";
+      flake = false;
+    };
   };
 
   outputs = inputs @ {
