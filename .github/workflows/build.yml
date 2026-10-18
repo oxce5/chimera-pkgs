@@ -1,0 +1,127 @@
+name: Build packages
+
+# Matrix build of each package, one job per package.
+#
+# Only pushes to chimera-pkgs (main) populate the shared chimera-pkgs Cachix
+# cache; branch pushes and PRs build only. See push-cache.yml to seed the cache
+# from a branch deliberately, before merging it.
+on:
+  push:
+    # All branches, not just chimera-pkgs: a push-only filter on main means
+    # work branches never trigger anything. `pull_request` also covers PRs.
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  packages:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - evil-winrm
+          - netexec
+          - sliver-client
+          - sliver-server
+          - plymouth-theme-tetos
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-substituters = https://nix-community.cachix.org
+            extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSU6h44bbx96VOlDHoayWR3I/7mD/
+
+      - name: Check Cachix token
+        # Only main pushes write to the shared cache. Fail loudly there (a
+        # missing secret would otherwise silently stop populating it); on
+        # branches and PRs this step is skipped and nothing is pushed.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/chimera-pkgs'
+        run: |
+          if [ -z "${{ secrets.CACHIX_AUTH_TOKEN }}" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN secret is not set - Cachix push will be skipped."
+            exit 1
+          fi
+
+      - name: Setup Cachix
+        # Gated exactly like the token check: main pushes cache, everything
+        # else builds only. Use push-cache.yml to seed the cache from a branch
+        # on purpose before merging it.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/chimera-pkgs'
+        uses: cachix/cachix-action@v15
+        with:
+          name: chimera-pkgs
+          # Repo secret, see https://app.cachix.org/cache/chimera-pkgs/auth
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Build package
+        run: |
+          nix build .#${{ matrix.package }} --print-build-logs
+
+  packages-gate:
+    # Stable aggregate check for branch protection. GitHub reports matrix legs
+    # as `packages (<name>)`, so there is no single `packages` check to require -
+    # requiring the five leg names instead would silently stop matching the day
+    # a package is added or renamed. This job needs the whole matrix, so it
+    # fails if any leg fails, and its name is the one thing we require.
+    name: packages-gate
+    needs: packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: All package builds passed
+        run: echo "every matrix leg of 'packages' succeeded"
+
+  font:
+    # Separate job: iosevka-chimera needs nodejs at build time, and a fresh
+    # nixpkgs can ship a nodejs too new for Hydra to have cached yet - then
+    # the runner compiles V8 from source (~1900 objects, 1-2h). Isolated here
+    # so a slow/failed font build never blocks the fast packages above.
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-substituters = https://nix-community.cachix.org
+            extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSU6h44bbx96VOlDHoayWR3I/7mD/
+
+      - name: Check Cachix token
+        if: github.event_name == 'push' && github.ref == 'refs/heads/chimera-pkgs'
+        run: |
+          if [ -z "${{ secrets.CACHIX_AUTH_TOKEN }}" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN secret is not set - Cachix push will be skipped."
+            exit 1
+          fi
+
+      - name: Setup Cachix
+        if: github.event_name == 'push' && github.ref == 'refs/heads/chimera-pkgs'
+        uses: cachix/cachix-action@v15
+        with:
+          name: chimera-pkgs
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Refuse local nodejs build
+        # iosevka needs nodejs at build time; a fresh nixpkgs can ship one
+        # too new for Hydra to have cached. Fail fast instead of compiling
+        # V8 from source for hours - re-run once the binary cache has it.
+        run: |
+          if nix build .#iosevka-chimera --dry-run 2>&1 \
+            | awk '/will be built:/{f=1;next} /will be fetched/{f=0} f' \
+            | grep -qi "nodejs"; then
+            echo "::error::iosevka-chimera would build nodejs from source (missing from binary caches). Aborting to avoid a multi-hour V8 compile - re-run once Hydra has cached it."
+            exit 1
+          fi
+
+      - name: Build font
+        run: |
+          nix build .#iosevka-chimera --print-build-logs

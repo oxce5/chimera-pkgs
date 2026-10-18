@@ -1,29 +1,41 @@
 {
   lib,
+  stdenv,
   buildGoModule,
+  fetchurl,
+  fetchFromGitHub,
   inputs,
 }:
-buildGoModule rec {
+let
+  # Args are forwarded verbatim so both Sliver packages import the shared lib
+  # identically. Nothing beyond the attributes used below is forced.
+  sliver = import ../../lib/sliver.nix {
+    inherit
+      lib
+      stdenv
+      buildGoModule
+      fetchurl
+      fetchFromGitHub
+      inputs
+      ;
+  };
+in
+# Build with the pristine upstream Go rather than nixpkgs' - see lib/sliver.nix.
+# It has to be `.override`, not an attribute: buildGoModule is an
+# extendMkDerivation, and a plain `go = ...` is ignored.
+(buildGoModule.override { go = sliver.goToolchain; }) rec {
   pname = "sliver-client";
-  version = "1.7.7";
+  version = sliver.version;
 
-  # Source is the `sliver` flake input (see flake.nix). Bump it with
-  # `nix flake update sliver` instead of editing rev/hash here.
-  # pkgs-by-name-for-flake-parts exposes the flake `inputs` attrset to every
-  # package function, which is how this argument gets filled in.
-  src = inputs.sliver.outPath;
+  # Source is the `sliver` flake input; bump with `nix flake update sliver`.
+  src = sliver.src;
 
   vendorHash = null;
 
-  ldflags = [
-    "-s -w"
-    "-X github.com/bishopfox/sliver/client/command/update.SliverPublicKey=RWTZPg959v3b7tLG7VzKHRB1/QT+d3c71Uzetfa44qAoX5rH7mGoQTTR"
-    "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryPublicKey=RWSBpxpRWDrD7Fe+VvRE3c2VEDC2NK80rlNCj+BX0gz44Xw07r6KQD9L"
-    "-X github.com/bishopfox/sliver/client/assets.DefaultArmoryRepoURL=https://api.github.com/repos/sliverarmory/armory/releases"
-    "-X github.com/bishopfox/sliver/client/version.Version=${version}"
-    "-X github.com/bishopfox/sliver/client/version.GitCommit=${inputs.sliver.rev}"
-    "-X github.com/bishopfox/sliver/client/version.CompiledAt=$(date +%s)"
-  ];
+  ldflags =
+    ["-s -w"]
+    ++ sliver.publicKeyLdflags
+    ++ sliver.clientVersionLdflags;
 
   buildPhase = ''
     runHook preBuild
@@ -46,6 +58,9 @@ buildGoModule rec {
     homepage = "https://github.com/BishopFox/sliver";
     changelog = "https://github.com/BishopFox/sliver/releases/tag/v${version}";
     license = licenses.gpl3Only;
+
+    # Unlike the server, the client builds no assets and is pure Go, so macOS
+    # needs no toolchain hashes of its own.
     platforms = platforms.linux ++ platforms.darwin;
   };
 }
