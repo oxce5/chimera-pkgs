@@ -1,0 +1,111 @@
+name: Push packages to Cachix (manual)
+
+# Manual only, deliberately. `build.yml` runs on every push and pull request
+# and never pushes; this workflow exists to populate the shared chimera-pkgs
+# cache from a branch on purpose (e.g. right before merging it, so the merge
+# is fast), without letting ordinary branch pushes write to the cache.
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: "Packages to build and push (comma separated, blank = all)"
+        required: false
+        default: ""
+
+jobs:
+  packages:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - evil-winrm
+          - netexec
+          - sliver-client
+          - sliver-server
+          - plymouth-theme-tetos
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-substituters = https://nix-community.cachix.org
+            extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSU6h44bbx96VOlDHoayWR3I/7mD/
+
+      - name: Check Cachix token
+        # This workflow does push, so a missing secret has to be loud rather
+        # than a silent no-op that looks like it worked.
+        run: |
+          if [ -z "${{ secrets.CACHIX_AUTH_TOKEN }}" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN is not set - nothing can be pushed. See https://app.cachix.org/cache/chimera-pkgs/auth"
+            exit 1
+          fi
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: chimera-pkgs
+          # Repo secret, see https://app.cachix.org/cache/chimera-pkgs/auth
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Build and push package
+        # cachix-action watches the store and pushes everything built here.
+        # An empty `packages` input means every matrix entry.
+        run: |
+          set -eu
+          only="${{ inputs.packages }}"
+          if [ -n "$only" ]; then
+            # Skip matrix legs that were not asked for.
+            if ! printf '%s' ",$only," | grep -q ",${{ matrix.package }},"; then
+              echo "skipping ${{ matrix.package }} (not in 'packages')"
+              exit 0
+            fi
+          fi
+          nix build .#${{ matrix.package }} --print-build-logs
+
+  font:
+    # Same guard as build.yml: iosevka needs nodejs, and a nixpkgs without it
+    # cached turns this into a multi-hour V8 build.
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-substituters = https://nix-community.cachix.org
+            extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSU6h44bbx96VOlDHoayWR3I/7mD/
+
+      - name: Check Cachix token
+        run: |
+          if [ -z "${{ secrets.CACHIX_AUTH_TOKEN }}" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN is not set - nothing can be pushed."
+            exit 1
+          fi
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: chimera-pkgs
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Refuse local nodejs build
+        run: |
+          if nix build .#iosevka-chimera --dry-run 2>&1 \
+            | awk '/will be built:/{f=1;next} /will be fetched/{f=0} f' \
+            | grep -qi "nodejs"; then
+            echo "::error::iosevka-chimera would build nodejs from source (missing from binary caches). Aborting to avoid a multi-hour V8 compile - re-run once Hydra has cached it."
+            exit 1
+          fi
+
+      - name: Build and push font
+        run: |
+          nix build .#iosevka-chimera --print-build-logs
