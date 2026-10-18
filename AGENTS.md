@@ -34,7 +34,7 @@ nix eval --impure --expr '(builtins.getFlake "path:$PWD").inputs.sliver.outPath'
 The second one prints the pinned upstream Sliver source tree — read upstream's real
 code from there instead of guessing or fetching from the network.
 
-CI (`.github/workflows/cachix.yml`) only builds on `ubuntu-latest` / x86_64:
+CI (`.github/workflows/build.yml`) only builds on `ubuntu-latest` / x86_64:
 `evil-winrm netexec sliver-client sliver-server plymouth-theme-tetos`, plus a
 separate `iosevka-chimera` job. **`smbclient-ng` is never built in CI.** So neither
 aarch64 nor darwin is exercised by CI — several real bugs below survive there.
@@ -167,8 +167,14 @@ removes the libc dependency entirely.
 
 ## CI gotchas
 
-- Pushes to `chimera-pkgs` **fail without `CACHIX_AUTH_TOKEN`** — intentional, so a
-  broken secret is loud rather than silent. PRs from forks stay pull-only.
+`.github/workflows/build.yml` builds one package per matrix job (`fail-fast: false`),
+plus a separate `font` job for `iosevka-chimera`. **It does not push to Cachix** — the
+shared `chimera-pkgs` cache is fed from `chimera-pkgs` (main), whose `cachix.yml` still
+has the `cachix-action` and the `CACHIX_AUTH_TOKEN` check. If you merge a push-less
+branch back, re-add both or main silently stops populating the cache.
+
+- Pushes to `chimera-pkgs` **fail without `CACHIX_AUTH_TOKEN`** on main — intentional,
+  so a broken secret is loud rather than silent. PRs from forks stay pull-only.
 - The `iosevka-chimera` job aborts if `nix build --dry-run` shows nodejs would be
   compiled from source (multi-hour V8 build). Re-run once Hydra has it; do not
   "fix" the guard.

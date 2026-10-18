@@ -1,5 +1,10 @@
-name: Build and push to Cachix
+name: Build packages
 
+# Matrix build of each package, one job per package, no binary cache push.
+# This is the same shape as main's cachix.yml with the push steps removed:
+# the shared chimera-pkgs Cachix cache is only fed from main, so work branches
+# can verify builds without polluting it. Re-add the cachix-action and the
+# token check when merging this back.
 on:
   push:
     branches: [chimera-pkgs]
@@ -30,27 +35,7 @@ jobs:
             extra-substituters = https://nix-community.cachix.org
             extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSU6h44bbx96VOlDHoayWR3I/7mD/
 
-      - name: Check Cachix token
-        # Fail loudly on push (instead of silently skipping the push)
-        # when the CACHIX_AUTH_TOKEN secret is missing. PRs from forks
-        # have no access to secrets and stay pull-only.
-        if: github.event_name == 'push'
-        run: |
-          if [ -z "${{ secrets.CACHIX_AUTH_TOKEN }}" ]; then
-            echo "::error::CACHIX_AUTH_TOKEN secret is not set - Cachix push will be skipped."
-            exit 1
-          fi
-
-      - name: Setup Cachix
-        uses: cachix/cachix-action@v15
-        with:
-          name: chimera-pkgs
-          # Repo secret, see https://app.cachix.org/cache/chimera-pkgs/auth
-          # Empty on forks -> pull-only, push is skipped.
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
       - name: Build package
-        # cachix-action watches the store and pushes everything built here.
         run: |
           nix build .#${{ matrix.package }} --print-build-logs
 
@@ -72,20 +57,6 @@ jobs:
             experimental-features = nix-command flakes
             extra-substituters = https://nix-community.cachix.org
             extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSU6h44bbx96VOlDHoayWR3I/7mD/
-
-      - name: Check Cachix token
-        if: github.event_name == 'push'
-        run: |
-          if [ -z "${{ secrets.CACHIX_AUTH_TOKEN }}" ]; then
-            echo "::error::CACHIX_AUTH_TOKEN secret is not set - Cachix push will be skipped."
-            exit 1
-          fi
-
-      - name: Setup Cachix
-        uses: cachix/cachix-action@v15
-        with:
-          name: chimera-pkgs
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Refuse local nodejs build
         # iosevka needs nodejs at build time; a fresh nixpkgs can ship one
