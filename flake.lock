@@ -75,11 +75,11 @@
     "sliver": {
       "flake": false,
       "locked": {
-        "lastModified": 1788451093,
-        "narHash": "sha256-yIpdbHVT+yiQrncoulW75+431T7z6akvnFhbSRglpDk=",
+        "lastModified": 1791993082,
+        "narHash": "sha256-/O9zrXL8un4iPom9qlA5Z+Ja6oBo+8/wLMiDGP8k50E=",
         "owner": "BishopFox",
         "repo": "sliver",
-        "rev": "0aa7e5bf962414823f12c3a8ea1f667f61b19ce2",
+        "rev": "8e5d2f9dbee99de46dd0193c7e15affb210fc4ca",
         "type": "github"
       },
       "original": {
