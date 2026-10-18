@@ -9,6 +9,15 @@ on:
 jobs:
   packages:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - evil-winrm
+          - netexec
+          - sliver-client
+          - sliver-server
+          - plymouth-theme-tetos
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,16 +49,10 @@ jobs:
           # Empty on forks -> pull-only, push is skipped.
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Build packages
+      - name: Build package
         # cachix-action watches the store and pushes everything built here.
         run: |
-          nix build \
-            .#evil-winrm \
-            .#netexec \
-            .#sliver-client \
-            .#sliver-server \
-            .#plymouth-theme-tetos \
-            --print-build-logs
+          nix build .#${{ matrix.package }} --print-build-logs
 
   font:
     # Separate job: iosevka-chimera needs nodejs at build time, and a fresh
