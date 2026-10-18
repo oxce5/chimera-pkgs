@@ -4,8 +4,6 @@
   buildGoModule,
   fetchurl,
   fetchFromGitHub,
-  go_1_26,
-  go_1_27,
   inputs,
 }:
 let
@@ -18,13 +16,14 @@ let
       buildGoModule
       fetchurl
       fetchFromGitHub
-      go_1_26
-      go_1_27
       inputs
       ;
   };
 in
-buildGoModule rec {
+# Build with the pristine upstream Go rather than nixpkgs' - see lib/sliver.nix.
+# It has to be `.override`, not an attribute: buildGoModule is an
+# extendMkDerivation, and a plain `go = ...` is ignored.
+(buildGoModule.override { go = sliver.goToolchain; }) rec {
   pname = "sliver-client";
   version = sliver.version;
 

@@ -106,6 +106,14 @@ platform's assets is correct (the `_linux_amd64.go` filename is a build constrai
   explicit `assert stdenv.hostPlatform.isLinux` — the hash tables only hold linux
   tarballs, and without it a darwin eval happily reuses a linux hash and fails much
   later with a confusing "hash mismatch".
+- **Setting `go` on `buildGoModule` needs `.override`.** `buildGoModule` is an
+  `extendMkDerivation`, so `buildGoModule { go = X; ... }` is silently ignored and it
+  falls back to nixpkgs' Go — you get a confusing `requires go >= 1.27` error instead.
+  Use `(buildGoModule.override { go = X; }) { ... }`.
+- **Two different hash kinds.** `fetchurl` hashes the flat tarball (`sha256sum` of the
+  file), but `fetchFromGitHub` and `vendorHash` hash the *unpacked* tree. Hashing a
+  GitHub tarball with `sha256sum` gives a value that never matches; let the build
+  print the right one.
 - Hash tables are keyed by version **and** arch. The old hardcoded
   `zig-x86_64-linux` URL meant aarch64 got an x86_64 zig while `meta` claimed
   support; keying by arch is what stops that class of silent breakage.
@@ -120,11 +128,15 @@ platform's assets is correct (the `_linux_amd64.go` filename is a build constrai
   (`assets-helpers.go`: `if os.IsNotExist(localPath) || force`). Upstream unpacks once
   and relies on the `assetVersion()` vs `ver.GitCommit` gate, which works here only
   because the ldflags set `GitCommit`.
-- **`nix flake update sliver` to master fails to build**: upstream `go.mod` now wants
-  Go 1.27.2, nixpkgs here provides 1.26.x, and `GOTOOLCHAIN=local` forbids
-  auto-download. `lib/sliver.nix` derives the *build* toolchain from `goVersion`, but
-  that only tracks the minor version — a patch-level bump still needs nixpkgs moved
-  or `GOTOOLCHAIN` relaxed.
+- **`nix flake update sliver` is now unblocked**, but only because `lib/sliver.nix`
+  builds with the *pristine upstream Go tarball* rather than nixpkgs' Go. Upstream's
+  `go.mod` asks for a patch level newer than nixpkgs ships (1.27.2 vs go_1_27 =
+  1.27.1), and `buildGoModule` hardcodes `GOTOOLCHAIN=local` in a way that wins over
+  `env`, so Go cannot fetch a newer toolchain in the sandbox either. One
+  `goTarballHashes` entry now serves both the embedded implant toolchain and the
+  compiler that builds Sliver, so the version tracks upstream's `goVersion` on its own.
+  Raising the pin further needs a new hash there and in `garbleHashes`; garble's
+  `vendorHash` is also per-version and the build will report it.
 
 ## Operational gotchas
 

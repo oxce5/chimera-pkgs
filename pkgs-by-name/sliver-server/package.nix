@@ -6,8 +6,6 @@
   fetchFromGitHub,
   zip,
   bash,
-  go_1_26,
-  go_1_27,
   inputs,
 }:
 let
@@ -18,8 +16,6 @@ let
       buildGoModule
       fetchurl
       fetchFromGitHub
-      go_1_26
-      go_1_27
       inputs
       ;
   };
@@ -32,7 +28,10 @@ assert stdenv.hostPlatform.isLinux || throw ''
   sliver-server is linux-only: the toolchain hashes cover the linux go,
   zig and garble tarballs. sliver-client still builds on darwin.
 '';
-buildGoModule rec {
+# Build with the pristine upstream Go rather than nixpkgs' - see lib/sliver.nix.
+# It has to be `.override`, not an attribute: buildGoModule is an
+# extendMkDerivation, and a plain `go = ...` is silently ignored.
+(buildGoModule.override { go = sliver.goToolchain; }) rec {
   pname = "sliver-server";
   version = sliver.version;
 

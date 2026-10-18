@@ -7,14 +7,13 @@
 # Args are forwarded verbatim by each package so the two stay symmetrical.
 # Everything is lazy: a package only forces what it uses, so sliver-client does
 # not drag in the toolchain derivations built for sliver-server.
-{ lib
-, stdenv
-, buildGoModule
-, fetchurl
-, fetchFromGitHub
-, go_1_26
-, go_1_27
-, inputs
+{
+  lib,
+  stdenv,
+  buildGoModule,
+  fetchurl,
+  fetchFromGitHub,
+  inputs,
 }:
 let
   src = inputs.sliver.outPath;
@@ -52,15 +51,6 @@ let
   garbleAssetsVersion = constFromAssets "garbleVersion";
   zigAssetsVersion = constFromAssets "zigVersion";
 
-  # nixpkgs Go matching the toolchain Sliver embeds. Derived from
-  # goAssetsVersion rather than pinned, so it cannot drift from the input.
-  # Note this only tracks the *minor* version: Sliver asking for a patch level
-  # newer than nixpkgs provides still needs GOTOOLCHAIN bumped or nixpkgs moved.
-  goPackage =
-    if lib.versionAtLeast (lib.versions.majorMinor goAssetsVersion) "1.27"
-    then go_1_27
-    else go_1_26;
-
   # Content hashes for the toolchains Sliver downloads at build time. These
   # cannot come from the flake input - they are bytes from dl.google.com and
   # ziglang.org, not from the sliver repo. A version bump without an entry here
@@ -69,6 +59,10 @@ let
     "1.26.6" = {
       amd64 = "sha256-cI7/t3S+gjdXDQrdFjIlq7369PyiiyYR3xZ766T+74k=";
       arm64 = "sha256-0FB+np1/4BKq5XAQjL12wV3oeeFxMKuMuQ1NdEXLHy4=";
+    };
+    "1.27.2" = {
+      amd64 = "sha256-7LrbmQkaP0bjH1+TSwaLGGTq+nmVIRs56t33aZYEX+U=";
+      arm64 = "sha256-lPPjC443S8KF59rcEeCGVya5vG6FuEHMzqq8AhTGt8g=";
     };
   };
 
@@ -82,6 +76,7 @@ let
 
   garbleHashes = {
     "1.26.6" = "sha256-ndkWliDzJLZFyhEikzu8UHkLyiJylHzmjd16WIakvak=";
+    "1.27.2" = "sha256-SBNoW6I18BFMOqvB/ud5FkPN0FAR/WpCqFkRu4Yo1A0=";
   };
 
   # A missing entry names itself, and prints the exact command that fixes it.
@@ -122,6 +117,38 @@ let
         "https://dl.google.com/go/go${goAssetsVersion}.${assetOs}-${goArch}.tar.gz";
     };
 
+  # The toolchain that builds sliver itself.
+  #
+  # Not nixpkgs' Go: upstream's go.mod demands a patch level newer than what
+  # nixpkgs ships, and buildGoModule hardcodes GOTOOLCHAIN=local (it wins over
+  # `env`, so it cannot be relaxed), which rules out letting Go fetch a newer
+  # toolchain inside the sandbox anyway. So build with the very same pristine
+  # tarball we already fetch for the embedded asset - one hash covers both uses,
+  # and the version tracks upstream's `goVersion` automatically.
+  #
+  # buildGoModule reads ${go}/bin plus the GOOS/GOARCH/CGO_ENABLED attributes
+  # off this derivation, so those are set explicitly below.
+  goToolchain =
+    stdenv.mkDerivation {
+      pname = "go";
+      version = goAssetsVersion;
+      src = goTarGz;
+      dontConfigure = true;
+      installPhase = ''
+        runHook preInstall
+        # unpackPhase already strips the tarball's top-level `go/` directory,
+        # so the working tree *is* the GOROOT; copy it to $out so that $out/bin/go
+        # lands on PATH and GOROOT resolves to $out.
+        mkdir -p $out
+        cp -r ./. $out/
+        runHook postInstall
+      '';
+      GOOS = assetOs;
+      GOARCH = goArch;
+      CGO_ENABLED = 1;
+      meta.mainProgram = "go";
+    };
+
   # Upstream downloads zig from a mirror list and verifies a minisign signature
   # (util/assets/zig.go). A pinned sha256 is the stronger, reproducible
   # equivalent - but it is per-platform, so the table above is what stops an
@@ -136,8 +163,10 @@ let
   # Upstream ships a prebuilt garble release binary per platform; we build the
   # same tag from source so the hash is pinned by the flake rather than by a
   # mutable release asset.
+  # `.override`, not an attribute: buildGoModule is an extendMkDerivation, so a
+  # plain `go = ...` is silently ignored and it falls back to nixpkgs' Go.
   garble =
-    buildGoModule {
+    (buildGoModule.override { go = goToolchain; }) {
       pname = "garble";
       version = garbleAssetsVersion;
       src = fetchFromGitHub {
@@ -148,10 +177,11 @@ let
           https://github.com/moloch--/garble/archive/refs/tags/v${garbleAssetsVersion}.tar.gz
         '';
       };
-      vendorHash = "sha256-F0Jc15ulA+qRDZu5W3FU9dZ+oXq8lGXP4dQeWnZwYbk=";
       # garble rewrites the standard library sources of the GOROOT it is handed,
-      # so it must match the toolchain Sliver ships alongside it.
-      go = goPackage;
+      # so it must match the toolchain Sliver ships alongside it - hence the
+      # override above. Vendor hash is per garble version; let the build report
+      # the right one when bumping.
+      vendorHash = "sha256-ZhT0aQnyodeGZ3R7jfn+9yyS9oilLevo4Itvplv4ypg=";
       ldflags = ["-s -w"];
       buildPhase = ''
         runHook preBuild
@@ -203,7 +233,7 @@ in
     goAssetsVersion
     garbleAssetsVersion
     zigAssetsVersion
-    goPackage
+    goToolchain
     goTarGz
     zigTarXz
     garble
