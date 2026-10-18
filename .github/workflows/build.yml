@@ -7,7 +7,13 @@ name: Build packages
 # token check when merging this back.
 on:
   push:
-    branches: [chimera-pkgs]
+    # All branches, not just chimera-pkgs: a push-only filter on main means
+    # work branches never trigger anything. `pull_request` also covers PRs.
+    #
+    # NOTE: when the cachix push steps are restored for main, narrow this back
+    # to `branches: [chimera-pkgs]` - otherwise every branch push would write
+    # to the shared chimera-pkgs cache.
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
 
