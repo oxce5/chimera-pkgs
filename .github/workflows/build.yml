@@ -63,6 +63,19 @@ jobs:
         run: |
           nix build .#${{ matrix.package }} --print-build-logs
 
+  packages-gate:
+    # Stable aggregate check for branch protection. GitHub reports matrix legs
+    # as `packages (<name>)`, so there is no single `packages` check to require -
+    # requiring the five leg names instead would silently stop matching the day
+    # a package is added or renamed. This job needs the whole matrix, so it
+    # fails if any leg fails, and its name is the one thing we require.
+    name: packages-gate
+    needs: packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: All package builds passed
+        run: echo "every matrix leg of 'packages' succeeded"
+
   font:
     # Separate job: iosevka-chimera needs nodejs at build time, and a fresh
     # nixpkgs can ship a nodejs too new for Hydra to have cached yet - then

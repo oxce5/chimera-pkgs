@@ -189,14 +189,17 @@ branches and PRs build but never push.
 seed `chimera-pkgs` from a branch before merging it (optional `packages` input narrows
 the matrix). Its token check fails unconditionally, since it exists to push.
 
-Merging to `main` therefore needs **required status checks** on `packages` and `font`,
-or nothing gates the merge.
+GitHub reports matrix legs as `packages (<name>)`, so there is no aggregate `packages`
+check to require — hence the `packages-gate` job, which `needs: packages` and is the
+single stable status check. Merging to `main` therefore needs **required status checks**
+on `packages-gate` and `font`, or nothing gates the merge. Branch protection is already
+configured on the remote for exactly those two.
 
 - Pushes to `chimera-pkgs` **fail without `CACHIX_AUTH_TOKEN`** — intentional, so a
   broken secret is loud rather than silently stopping the cache from being populated.
   That gate is main-only, so the secret is never consulted on branches or PRs.
-- The matrix reports as one `packages` check even though it fans out per package, and
-  `fail-fast: false` means one failing package still fails the check (good for gating).
+- `fail-fast: false` keeps the other legs running after one fails; `packages-gate`
+  still fails, so gating is unaffected.
 - The `iosevka-chimera` job aborts if `nix build --dry-run` shows nodejs would be
   compiled from source (multi-hour V8 build). Re-run once Hydra has it; do not
   "fix" the guard.
