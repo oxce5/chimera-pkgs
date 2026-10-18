@@ -130,10 +130,20 @@ let
   # off this derivation, so those are set explicitly below.
   goToolchain =
     stdenv.mkDerivation {
-      pname = "go";
+      # Deliberately not named "go", to avoid any name-keyed special-casing in
+      # the unpack path; the real FHS rewrite is handled by forceShare below.
+      pname = "go-pristine";
       version = goAssetsVersion;
       src = goTarGz;
       dontConfigure = true;
+
+      # stdenv's move-docs.sh setup hook rewrites $out/{man,doc,info} into
+      # $out/share/ to make the output FHS-shaped. This GOROOT is packed
+      # verbatim into go.zip, so it must stay exactly as dl.google.com ships
+      # it - the same layout upstream Sliver embeds. The hook only acts on
+      # names in $forceShare and cannot be emptied (an empty value falls back
+      # to the default), so point it at a directory that does not exist.
+      forceShare = [ "go-pristine-no-such-dir" ];
       installPhase = ''
         runHook preInstall
         # unpackPhase already strips the tarball's top-level `go/` directory,

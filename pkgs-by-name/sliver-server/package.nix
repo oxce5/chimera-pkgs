@@ -57,7 +57,10 @@ assert stdenv.hostPlatform.isLinux || throw ''
     # Upstream bundles a pristine dl.google.com Go toolchain so implants don't
     # get a Nix store PT_INTERP; doing the same is load-bearing. See AGENTS.md.
     mkdir -p server/assets/fs/${sliver.assetOs}/${sliver.goArch}
-    tar -xf ${sliver.goTarGz} -C $TMPDIR
+
+    # Copy from goToolchain rather than untarring the tarball a second time:
+    # it is the same GOROOT, already materialised in the store for the compiler.
+    cp -r ${sliver.goToolchain} $TMPDIR/go
     chmod -R +w $TMPDIR/go
 
     # Invoked through bash explicitly: the script's `#!/usr/bin/env bash`
