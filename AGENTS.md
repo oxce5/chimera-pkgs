@@ -180,13 +180,23 @@ removes the libc dependency entirely.
 ## CI gotchas
 
 `.github/workflows/build.yml` builds one package per matrix job (`fail-fast: false`),
-plus a separate `font` job for `iosevka-chimera`. **It does not push to Cachix** — the
-shared `chimera-pkgs` cache is fed from `chimera-pkgs` (main), whose `cachix.yml` still
-has the `cachix-action` and the `CACHIX_AUTH_TOKEN` check. If you merge a push-less
-branch back, re-add both or main silently stops populating the cache.
+plus a separate `font` job for `iosevka-chimera`. It runs on **every** branch push and
+every PR (`branches: ["**"]`), but the Cachix steps are gated on
+`github.ref == 'refs/heads/chimera-pkgs'`, so **only main writes to the shared cache** —
+branches and PRs build but never push.
 
-- Pushes to `chimera-pkgs` **fail without `CACHIX_AUTH_TOKEN`** on main — intentional,
-  so a broken secret is loud rather than silent. PRs from forks stay pull-only.
+`.github/workflows/push-cache.yml` is `workflow_dispatch` only: the deliberate way to
+seed `chimera-pkgs` from a branch before merging it (optional `packages` input narrows
+the matrix). Its token check fails unconditionally, since it exists to push.
+
+Merging to `main` therefore needs **required status checks** on `packages` and `font`,
+or nothing gates the merge.
+
+- Pushes to `chimera-pkgs` **fail without `CACHIX_AUTH_TOKEN`** — intentional, so a
+  broken secret is loud rather than silently stopping the cache from being populated.
+  That gate is main-only, so the secret is never consulted on branches or PRs.
+- The matrix reports as one `packages` check even though it fans out per package, and
+  `fail-fast: false` means one failing package still fails the check (good for gating).
 - The `iosevka-chimera` job aborts if `nix build --dry-run` shows nodejs would be
   compiled from source (multi-hour V8 build). Re-run once Hydra has it; do not
   "fix" the guard.

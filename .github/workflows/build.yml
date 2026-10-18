@@ -1,18 +1,14 @@
 name: Build packages
 
-# Matrix build of each package, one job per package, no binary cache push.
-# This is the same shape as main's cachix.yml with the push steps removed:
-# the shared chimera-pkgs Cachix cache is only fed from main, so work branches
-# can verify builds without polluting it. Re-add the cachix-action and the
-# token check when merging this back.
+# Matrix build of each package, one job per package.
+#
+# Only pushes to chimera-pkgs (main) populate the shared chimera-pkgs Cachix
+# cache; branch pushes and PRs build only. See push-cache.yml to seed the cache
+# from a branch deliberately, before merging it.
 on:
   push:
     # All branches, not just chimera-pkgs: a push-only filter on main means
     # work branches never trigger anything. `pull_request` also covers PRs.
-    #
-    # NOTE: when the cachix push steps are restored for main, narrow this back
-    # to `branches: [chimera-pkgs]` - otherwise every branch push would write
-    # to the shared chimera-pkgs cache.
     branches: ["**"]
   pull_request:
   workflow_dispatch:
@@ -41,6 +37,28 @@ jobs:
             extra-substituters = https://nix-community.cachix.org
             extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSU6h44bbx96VOlDHoayWR3I/7mD/
 
+      - name: Check Cachix token
+        # Only main pushes write to the shared cache. Fail loudly there (a
+        # missing secret would otherwise silently stop populating it); on
+        # branches and PRs this step is skipped and nothing is pushed.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/chimera-pkgs'
+        run: |
+          if [ -z "${{ secrets.CACHIX_AUTH_TOKEN }}" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN secret is not set - Cachix push will be skipped."
+            exit 1
+          fi
+
+      - name: Setup Cachix
+        # Gated exactly like the token check: main pushes cache, everything
+        # else builds only. Use push-cache.yml to seed the cache from a branch
+        # on purpose before merging it.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/chimera-pkgs'
+        uses: cachix/cachix-action@v15
+        with:
+          name: chimera-pkgs
+          # Repo secret, see https://app.cachix.org/cache/chimera-pkgs/auth
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
       - name: Build package
         run: |
           nix build .#${{ matrix.package }} --print-build-logs
@@ -63,6 +81,21 @@ jobs:
             experimental-features = nix-command flakes
             extra-substituters = https://nix-community.cachix.org
             extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSU6h44bbx96VOlDHoayWR3I/7mD/
+
+      - name: Check Cachix token
+        if: github.event_name == 'push' && github.ref == 'refs/heads/chimera-pkgs'
+        run: |
+          if [ -z "${{ secrets.CACHIX_AUTH_TOKEN }}" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN secret is not set - Cachix push will be skipped."
+            exit 1
+          fi
+
+      - name: Setup Cachix
+        if: github.event_name == 'push' && github.ref == 'refs/heads/chimera-pkgs'
+        uses: cachix/cachix-action@v15
+        with:
+          name: chimera-pkgs
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Refuse local nodejs build
         # iosevka needs nodejs at build time; a fresh nixpkgs can ship one
