@@ -120,6 +120,12 @@ platform's assets is correct (the `_linux_amd64.go` filename is a build constrai
   file), but `fetchFromGitHub` and `vendorHash` hash the *unpacked* tree. Hashing a
   GitHub tarball with `sha256sum` gives a value that never matches; let the build
   print the right one.
+- **On the scripted networking backend, `networking.interfaces.lo` is a silent
+  no-op.** Its generated `network-addresses-lo.service` gets an empty
+  `WantedBy` (the device dependency for `lo` is empty in
+  `network-interfaces-scripted.nix`), so it never starts - not on activation,
+  not on boot. The module aliases portfwd addresses with its own oneshot
+  (`sliver-portfwd-aliases`) instead.
 - Hash tables are keyed by version **and** arch. The old hardcoded
   `zig-x86_64-linux` URL meant aarch64 got an x86_64 zig while `meta` claimed
   support; keying by arch is what stops that class of silent breakage.

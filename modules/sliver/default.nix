@@ -124,18 +124,23 @@ in {
       # it follow the default route off the box, and the sysctls cover
       # addresses that are merely routed (ligolo-style tunnels) plus
       # unprivileged binds of 80/443.
-      networking.interfaces.lo.ipv4.addresses =
-        lib.mkIf (cfg.portfwdAddresses != [])
-        (map (cidr: let
-          parts = lib.splitString "/" cidr;
-        in {
-          address = builtins.head parts;
-          prefixLength =
-            if builtins.length parts > 1
-            then lib.toInt (builtins.elemAt parts 1)
-            else 32;
-        })
-        cfg.portfwdAddresses);
+      #
+      # `networking.interfaces.lo` is the declarative way, but on the scripted
+      # networking backend the generated `network-addresses-lo.service` gets an
+      # empty WantedBy (the device dependency for lo is empty) and never runs,
+      # so the address silently never appears. Use our own oneshot instead; it
+      # works on both backends.
+      systemd.services.sliver-portfwd-aliases = lib.mkIf (cfg.portfwdAddresses != []) {
+        description = "Sliver portfwd loopback aliases";
+        wantedBy = ["network.target"];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart =
+            map (cidr: "${pkgs.iproute2}/bin/ip addr replace ${cidr} dev lo")
+            cfg.portfwdAddresses;
+        };
+      };
 
       boot.kernel.sysctl = {
         "net.ipv4.ip_nonlocal_bind" = lib.mkIf cfg.allowNonLocalBind 1;
