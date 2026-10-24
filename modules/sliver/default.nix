@@ -50,6 +50,50 @@ in {
       default = "sliver";
       description = "Group to run the service as.";
     };
+
+    portfwdAddresses = lib.mkOption {
+      type = lib.types.listOf (lib.types.strMatching "[0-9]{1,3}(\\.[0-9]{1,3}){3}(/[0-9]{1,2})?");
+      default = ["240.0.0.1/32"];
+      example = ["240.0.0.1/32" "240.0.0.2/32"];
+      description = ''
+        IPv4 addresses to assign to `lo` so `portfwd --bind` can use them.
+        `portfwd` listeners are created by the interactive client process, not
+        the server daemon, and Burp/browsers bypass the proxy for 127.0.0.0/8.
+        Binding a fake address from the reserved 240.0.0.0/4 range is what
+        makes tunneled traffic interceptable, e.g.
+        `portfwd add --bind 240.0.0.1:443 --remote <target>:443`.
+
+        Assigning a wider prefix (e.g. `240.0.0.1/24`) makes the whole prefix
+        local on lo, so any address in it can be bound and reaches the
+        listener. Note the kernel installs the prefix as a local route on lo,
+        which shadows tunnel routes for the same range.
+      '';
+    };
+
+    allowNonLocalBind = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Set `net.ipv4.ip_nonlocal_bind = 1` so listeners may bind IPv4
+        addresses that are not assigned to any local interface. Needed for
+        addresses that only have a route - e.g. an arbitrary address in a
+        ligolo-ng style tunnel range; addresses covered by a
+        `portfwdAddresses` prefix are already local to lo.
+      '';
+    };
+
+    unprivilegedPortStart = lib.mkOption {
+      type = lib.types.nullOr lib.types.port;
+      default = 80;
+      description = ''
+        Value for `net.ipv4.ip_unprivileged_port_start`, letting unprivileged
+        processes bind 80/443. `portfwd` runs in the sliver-client process and
+        this module cannot hand an interactive process file capabilities, so
+        the sysctl is used instead of `CAP_NET_BIND_SERVICE`. This applies
+        system-wide: any local process may bind ports at or above the given
+        value. Set to null to leave the sysctl untouched.
+      '';
+    };
   };
 
   config = lib.mkMerge [
@@ -73,6 +117,31 @@ in {
       };
 
       users.groups.${cfg.group} = {};
+
+      # Host-level enablement for portfwd, whose listeners live in the
+      # interactive client rather than the daemon: aliasing the address on lo
+      # makes the bind succeed and keeps the traffic local instead of letting
+      # it follow the default route off the box, and the sysctls cover
+      # addresses that are merely routed (ligolo-style tunnels) plus
+      # unprivileged binds of 80/443.
+      networking.interfaces.lo.ipv4.addresses =
+        lib.mkIf (cfg.portfwdAddresses != [])
+        (map (cidr: let
+          parts = lib.splitString "/" cidr;
+        in {
+          address = builtins.head parts;
+          prefixLength =
+            if builtins.length parts > 1
+            then lib.toInt (builtins.elemAt parts 1)
+            else 32;
+        })
+        cfg.portfwdAddresses);
+
+      boot.kernel.sysctl = {
+        "net.ipv4.ip_nonlocal_bind" = lib.mkIf cfg.allowNonLocalBind 1;
+        "net.ipv4.ip_unprivileged_port_start" =
+          lib.mkIf (cfg.unprivilegedPortStart != null) cfg.unprivilegedPortStart;
+      };
 
       systemd.services.sliver = {
         description = "Sliver";

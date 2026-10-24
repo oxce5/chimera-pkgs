@@ -19,6 +19,12 @@ deviate from upstream. Read this before "simplifying" anything under `pkgs-by-na
   so neither duplicates the other. `lib/` exists because `pkgs-by-name` only loads
   `package.nix`.
 - `modules/sliver/default.nix` — NixOS module. Exported as `nixosModules.sliver`.
+  Part of it is host-level enablement for `portfwd`: those listeners are created
+  by the interactive *client* process, not the daemon, so fake 240/4 addresses
+  are aliased onto `lo` and 80/443 are enabled with sysctls
+  (`ip_unprivileged_port_start`, `ip_nonlocal_bind`) rather than service
+  capabilities — `AmbientCapabilities` on the daemon would not help portfwd at
+  all, and Burp/browsers skip the proxy for 127.0.0.0/8.
 
 No formatter is wired up (`formatter` is unset, so `nix fmt` does nothing) and no
 test suite: `checks` is empty, CI only runs `nix build`, and both sliver packages
